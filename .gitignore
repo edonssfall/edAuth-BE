@@ -1,0 +1,6 @@
+.idea
+.venv
+venv
+media_cdn/
+static_cdn/
+.git/
