@@ -1,6 +1,6 @@
 
 from .views import RegisterUserAPIView, VerifyEmailUserAPIView, LoginUserAPIView, \
-    PasswordResetRequestAPIView, PasswordSetNewAPIView, LogoutUserAPIView
+    PasswordResetRequestAPIView, PasswordSetNewAPIView, LogoutUserAPIView, UserViewSet
 from rest_framework.routers import DefaultRouter
 from django.urls import path
 
@@ -13,3 +13,4 @@ authentication_router.register(r'verify-otp', VerifyEmailUserAPIView, basename='
 authentication_router.register(r'signup', RegisterUserAPIView, basename='signup')
 authentication_router.register(r'logout', LogoutUserAPIView, basename='logout')
 authentication_router.register(r'login', LoginUserAPIView, basename='login')
+authentication_router.register(r'profile', UserViewSet, basename='profile')
