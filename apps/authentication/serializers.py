@@ -17,18 +17,18 @@ User = get_user_model()
 class RegisterSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(required=True)
     password = serializers.CharField(min_length=8, write_only=True, required=True)
-    password2 = serializers.CharField(min_length=8, write_only=True, required=True)
+    repeat_password = serializers.CharField(min_length=8, write_only=True, required=True)
 
     class Meta:
         model = User
-        fields = ('password', 'password2', 'email', 'first_name', 'last_name')
+        fields = ('password', 'repeat_password', 'email', 'first_name', 'last_name')
         extra_kwargs = {
             'first_name': {'required': True},
             'last_name': {'required': True}
         }
 
     def validate(self, attrs):
-        if attrs.get('password') != attrs.get('password2'):
+        if attrs.get('password') != attrs.get('repeat_password'):
             raise serializers.ValidationError({'password': "Password fields didn't match."})
 
         return attrs
