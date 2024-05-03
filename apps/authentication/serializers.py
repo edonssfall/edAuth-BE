@@ -1,13 +1,14 @@
+import os
+
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
-from django.contrib.auth import get_user_model, authenticate
-from django.contrib.sites.shortcuts import get_current_site
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework.exceptions import AuthenticationFailed
 from django.utils.encoding import smart_bytes, force_str
 from rest_framework_simplejwt.tokens import RefreshToken
+from django.contrib.auth import get_user_model
 from rest_framework import serializers
-from django.urls import reverse
 from .utils import send_email
 
 User = get_user_model()
@@ -46,38 +47,46 @@ class RegisterSerializer(serializers.ModelSerializer):
 
 
 class UserSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = User
-        fields = ['id', 'email', 'first_name', 'last_name', 'avatar', 'groups']
-
-
-class LoginSerializer(serializers.ModelSerializer):
-    email = serializers.EmailField(write_only=True)
-    password = serializers.CharField(min_length=8, write_only=True)
-    access_token = serializers.CharField(min_length=8, read_only=True)
-    refresh_token = serializers.CharField(min_length=8, read_only=True)
-    user = UserSerializer(read_only=True)
+    password = serializers.CharField(min_length=8, write_only=True, required=False)
+    new_password = serializers.CharField(min_length=8, write_only=True, required=False)
+    repeat_new_password = serializers.CharField(min_length=8, write_only=True, required=False)
 
     class Meta:
         model = User
-        fields = ['email', 'password', 'access_token', 'refresh_token', 'user']
+        fields = ['id', 'email', 'first_name', 'last_name', 'avatar', 'password', 'new_password', 'repeat_new_password',
+                  'groups']
+
+    def update(self, instance, validated_data):
+        """
+        Update the user's location if provided in the request data
+        Password is updated separately
+        """
+        password = validated_data.pop('password', None)
+        new_password = validated_data.pop('new_password', None)
+        repeat_new_password = validated_data.pop('repeat_new_password', None)
+
+        if password:
+            if password == new_password:
+                raise serializers.ValidationError("New password must be different from the old one.")
+            if new_password != repeat_new_password:
+                raise serializers.ValidationError("Passwords do not match.")
+            instance.set_password(password)
+            instance.save()
+
+        return super().update(instance, validated_data)
+
+
+class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    @classmethod
+    def get_token(cls, user):
+        token = super().get_token(user)
+        return token
 
     def validate(self, attrs):
-        email = attrs.get('email')
-        password = attrs.get('password')
-        request = self.context.get('request')
-        user = authenticate(request, email=email, password=password)
-        if not user:
-            raise AuthenticationFailed('Invalid credentials.')
-        if not user.is_verified:
-            raise AuthenticationFailed('User is not verified.')
-        token = user.tokens()
+        data = super().validate(attrs)
+        data['user'] = UserSerializer(self.user).data
 
-        return {
-            'user': user,
-            'access_token': token.get('access'),
-            'refresh_token': token.get('refresh'),
-        }
+        return data
 
 
 class PasswordResetRequestSerializer(serializers.Serializer):
@@ -88,20 +97,21 @@ class PasswordResetRequestSerializer(serializers.Serializer):
 
     def validate(self, attrs):
         email = attrs.get('email')
-        if User.objects.filter(email=email).exists():
-            user = User.objects.get(email=email)
-            uidb64 = urlsafe_base64_encode(smart_bytes(user.id))
-            token = PasswordResetTokenGenerator().make_token(user)
-            request = self.context.get('request')
-            site_domain = get_current_site(request).domain
-            relative_link = reverse('authentication_api:password reset confirm', kwargs={'uidb64': uidb64, 'token': token})
-            absolute_link = f'http://{site_domain}{relative_link}'
-            body = (f'Hi, {user.get_full_name}\n'
-                          f'Hear is link to reset password:\n'
-                          f'{absolute_link}')
-            send_email(subject='Password reset', body=body, to=[user.email])
+        try:
+            if User.objects.filter(email=email).exists():
+                user = User.objects.get(email=email)
+                uidb64 = urlsafe_base64_encode(smart_bytes(user.id))
+                token = PasswordResetTokenGenerator().make_token(user)
+                absolute_link = f"{os.getenv('FRONTEND_URL')}/login/{uidb64}/{token}"
+                body = (f'Hi, {user.get_full_name}\n'
+                        f'Here is link to reset password:\n'
+                        f'{absolute_link}')
+                send_email(subject='Password reset', body=body, to=[user.email])
+                attrs['link'] = absolute_link
 
-        return super().validate(attrs)
+            return super().validate(attrs)
+        except Exception as e:
+            raise AuthenticationFailed(f'Email does not exist.\n{e}', 404)
 
 
 class PasswordSetNewSerializer(serializers.Serializer):
