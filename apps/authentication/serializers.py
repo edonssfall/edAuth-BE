@@ -1,5 +1,3 @@
-import os
-
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
@@ -10,6 +8,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 from .utils import send_email
+import os
 
 User = get_user_model()
 
@@ -97,21 +96,19 @@ class PasswordResetRequestSerializer(serializers.Serializer):
 
     def validate(self, attrs):
         email = attrs.get('email')
-        try:
-            if User.objects.filter(email=email).exists():
-                user = User.objects.get(email=email)
-                uidb64 = urlsafe_base64_encode(smart_bytes(user.id))
-                token = PasswordResetTokenGenerator().make_token(user)
-                absolute_link = f"{os.getenv('FRONTEND_URL')}/login/{uidb64}/{token}"
-                body = (f'Hi, {user.get_full_name}\n'
-                        f'Here is link to reset password:\n'
-                        f'{absolute_link}')
-                send_email(subject='Password reset', body=body, to=[user.email])
-                attrs['link'] = absolute_link
+        if User.objects.filter(email=email).exists():
+            user = User.objects.get(email=email)
+            uidb64 = urlsafe_base64_encode(smart_bytes(user.id))
+            token = PasswordResetTokenGenerator().make_token(user)
+            absolute_link = f"{os.getenv('FRONTEND_URL')}/{uidb64}/{token}"
+            body = (f'Hi, {user.get_full_name}\n'
+                    f'Here is link to reset password:\n'
+                    f'{absolute_link}')
+            # send_email(subject='Password reset', body=body, to=[user.email])
+            attrs['link'] = absolute_link
 
             return super().validate(attrs)
-        except Exception as e:
-            raise AuthenticationFailed(f'Email does not exist.\n{e}', 404)
+        raise AuthenticationFailed(f'Email does not exist.', 404)
 
 
 class PasswordSetNewSerializer(serializers.Serializer):

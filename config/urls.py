@@ -20,17 +20,17 @@ from django.urls import path, include
 from rest_framework import routers
 from django.contrib import admin
 
-
 router = routers.DefaultRouter(trailing_slash=False)
 router.registry.extend(authentication_router.registry)
 
 api_urlpatterns = [
-    path('/auth/social', include('apps.social_accounts.urls', namespace='authentication_social')),
-    path('/token/refresh', TokenRefreshView.as_view(), name='token_refresh'),
+    path('social', include('apps.social_accounts.urls', namespace='authentication_social')),
+    path('', include('apps.authentication.urls', namespace='authentication_api')),
+    path('token/refresh', TokenRefreshView.as_view(), name='token_refresh'),
     path('', include(router.urls)),
 ]
 
 urlpatterns = [
-    path('api/auth', include(api_urlpatterns)),
+    path('api/auth/', include(api_urlpatterns)),
     path('admin-auth', admin.site.urls),
 ]

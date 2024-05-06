@@ -20,7 +20,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     email = models.EmailField(_('email address'), blank=True, unique=True)
     date_joined = models.DateTimeField(_('date joined'), default=timezone.now)
     last_login = models.DateTimeField(_('last loging'), default=timezone.now)
-    is_verified = models.BooleanField(_('verified'), default=False)
+    is_verified = models.BooleanField(_('verified'), default=True)
     auth_provider = models.CharField(_('auth provider'), max_length=50, default=AUTH_PROVIDERS.get('email'))
     is_staff = models.BooleanField(
         _('staff status'),
@@ -58,11 +58,3 @@ class User(AbstractBaseUser, PermissionsMixin):
             'exp': int(date.strftime('%s'))
         }, settings.SECRET_KEY, algorithm='HS256')
         return token.decode('utf-8')
-
-
-class OneTimePassword(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
-    code = models.CharField(max_length=6, unique=True)
-
-    def __str__(self):
-        return f'{self.user.first_name}-passcode'
