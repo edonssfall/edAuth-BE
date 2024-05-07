@@ -14,10 +14,16 @@ User = get_user_model()
 
 
 class RegisterUserAPIView(mixins.CreateModelMixin, GenericViewSet):
+    """
+    Create user api view
+    """
     queryset = User.objects.all()
     serializer_class = RegisterSerializer
 
     def post(self, request, *args, **kwargs):
+        """
+        Create method and return error or user
+        """
         user_data = request.data
         serializer = self.serializer_class(data=user_data)
         if serializer.is_valid(raise_exception=True):
@@ -28,13 +34,22 @@ class RegisterUserAPIView(mixins.CreateModelMixin, GenericViewSet):
 
 
 class LoginUserAPIView(TokenObtainPairView):
+    """
+    Login api view
+    """
     serializer_class = CustomTokenObtainPairSerializer
 
 
 class PasswordResetRequestAPIView(GenericAPIView):
+    """
+    Reset password api view
+    """
     serializer_class = PasswordResetRequestSerializer
 
     def post(self, request, *args, **kwargs):
+        """
+        Send email, and message to frontend with link
+        """
         serializer = self.serializer_class(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
         return Response({'message': 'Reset passwords link sent to email.', 'data': serializer.validated_data},
@@ -42,19 +57,31 @@ class PasswordResetRequestAPIView(GenericAPIView):
 
 
 class PasswordSetNewAPIView(GenericAPIView):
+    """
+    Set New Password for user api view
+    """
     serializer_class = PasswordSetNewSerializer
 
     def patch(self, request):
+        """
+        Set new password
+        """
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         return Response({'message': 'Password has been reset.'}, status=status.HTTP_200_OK)
 
 
 class LogoutUserAPIView(GenericAPIView):
+    """
+    Save Token to blacklist api view
+    """
     permission_classes = [IsAuthenticated]
     serializer_class = LogoutSerializer
 
     def post(self, request):
+        """
+        This method save refresh token t drf. Black list
+        """
         serializer = self.get_serializer(data={'refresh_token': request.COOKIES.get('refresh')})
         serializer.is_valid(raise_exception=True)
         serializer.save()
