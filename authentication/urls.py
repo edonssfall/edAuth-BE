@@ -3,7 +3,7 @@ from .views import RegisterUserAPIView, LoginUserAPIView, PasswordResetRequestAP
 from rest_framework.routers import DefaultRouter
 from django.urls import path
 
-app_name = 'apps.authentication'
+app_name = 'authentication'
 
 authentication_router = DefaultRouter()
 authentication_router.register(r'signup', RegisterUserAPIView, basename='signup')

@@ -7,13 +7,16 @@ from django.utils.encoding import smart_bytes, force_str
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
-from .utils import send_email
 import os
 
 User = get_user_model()
 
 
 class RegisterSerializer(serializers.ModelSerializer):
+    """
+    This serializer is used to register a new user.
+    return user
+    """
     email = serializers.EmailField(required=True)
     password = serializers.CharField(min_length=8, write_only=True, required=True)
     repeat_password = serializers.CharField(min_length=8, write_only=True, required=True)
@@ -26,18 +29,14 @@ class RegisterSerializer(serializers.ModelSerializer):
             'last_name': {'required': True}
         }
 
-    def validate(self, attrs):
+    def validate_password(self, attrs):
         if attrs.get('password') != attrs.get('repeat_password'):
             raise serializers.ValidationError({'password': "Password fields didn't match."})
 
         return attrs
 
     def create(self, validated_data):
-        user = User.objects.create(
-            email=validated_data.get('email'),
-            first_name=validated_data.get('first_name'),
-            last_name=validated_data.get('last_name'),
-        )
+        user = User.objects.create(**validated_data)
 
         user.set_password(validated_data.get('password'))
         user.save()
@@ -46,6 +45,10 @@ class RegisterSerializer(serializers.ModelSerializer):
 
 
 class UserSerializer(serializers.ModelSerializer):
+    """
+    This serializer is used to update user information.
+    return user
+    """
     password = serializers.CharField(min_length=8, write_only=True, required=False)
     new_password = serializers.CharField(min_length=8, write_only=True, required=False)
     repeat_new_password = serializers.CharField(min_length=8, write_only=True, required=False)
@@ -76,6 +79,11 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    """
+    This serializer is used to get the token for the user.
+    return token and user being logged in
+    """
+
     @classmethod
     def get_token(cls, user):
         token = super().get_token(user)
@@ -89,6 +97,10 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 
 
 class PasswordResetRequestSerializer(serializers.Serializer):
+    """
+    This serializer is used to request a password reset.
+    return email url
+    """
     email = serializers.EmailField()
 
     class Meta:
@@ -101,9 +113,9 @@ class PasswordResetRequestSerializer(serializers.Serializer):
             uidb64 = urlsafe_base64_encode(smart_bytes(user.id))
             token = PasswordResetTokenGenerator().make_token(user)
             absolute_link = f"{os.getenv('FRONTEND_URL')}/{uidb64}/{token}"
-            body = (f'Hi, {user.get_full_name}\n'
-                    f'Here is link to reset password:\n'
-                    f'{absolute_link}')
+            # body = (f'Hi, {user.get_full_name}\n'
+            #         f'Here is link to reset password:\n'
+            #         f'{absolute_link}')
             # send_email(subject='Password reset', body=body, to=[user.email])
             attrs['link'] = absolute_link
 
@@ -112,6 +124,10 @@ class PasswordResetRequestSerializer(serializers.Serializer):
 
 
 class PasswordSetNewSerializer(serializers.Serializer):
+    """
+    This serializer is used to set a new password.
+    return user
+    """
     password = serializers.CharField(min_length=8, write_only=True)
     confirm_password = serializers.CharField(min_length=8, write_only=True)
     uidb64 = serializers.CharField(write_only=True)
@@ -141,11 +157,11 @@ class PasswordSetNewSerializer(serializers.Serializer):
 
 
 class LogoutSerializer(serializers.Serializer):
+    """
+    This serializer is used to log out the user.
+    """
     refresh_token = serializers.CharField()
-
-    default_error_messages = {
-        'bad_token': 'Token is invalid or has expired'
-    }
+    default_error_messages = {'bad_token': 'Token is invalid or has expired'}
 
     def validate(self, attrs):
         self.refresh_token = attrs.get('refresh_token')

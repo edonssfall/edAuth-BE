@@ -1,18 +1,19 @@
 from django.contrib.auth.base_user import AbstractBaseUser
-from authentication.managers import CustomUserManager
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth.models import PermissionsMixin
 from django.utils.translation import gettext_lazy as _
+from authentication.managers import CustomUserManager
 from datetime import datetime, timedelta
 from django.utils import timezone
 from django.conf import settings
 from django.db import models
 import jwt
 
-AUTH_PROVIDERS = {'email': 'email', 'google': 'google', 'facebook': 'facebook', 'github': 'github'}
-
 
 class User(AbstractBaseUser, PermissionsMixin):
+    """
+    Custom user model
+    """
     id = models.BigAutoField(primary_key=True)
     first_name = models.CharField(_('first name'), max_length=150, blank=True, null=True)
     last_name = models.CharField(_('last name'), max_length=150, blank=True, null=True)
@@ -21,7 +22,6 @@ class User(AbstractBaseUser, PermissionsMixin):
     date_joined = models.DateTimeField(_('date joined'), default=timezone.now)
     last_login = models.DateTimeField(_('last loging'), default=timezone.now)
     is_verified = models.BooleanField(_('verified'), default=True)
-    auth_provider = models.CharField(_('auth provider'), max_length=50, default=AUTH_PROVIDERS.get('email'))
     is_staff = models.BooleanField(
         _('staff status'),
         default=False,
@@ -42,9 +42,15 @@ class User(AbstractBaseUser, PermissionsMixin):
     objects = CustomUserManager()
 
     def get_full_name(self):
+        """
+        return first name and last name
+        """
         return f'{self.first_name} {self.last_name}'
 
     def tokens(self):
+        """
+        return two tokens
+        """
         refresh = RefreshToken.for_user(self)
         return {
             'refresh': str(refresh),
@@ -52,6 +58,9 @@ class User(AbstractBaseUser, PermissionsMixin):
         }
 
     def _generate_jwt_token(self):
+        """
+        generate jwt token for 60 days
+        """
         date = datetime.now() + timedelta(days=60)
         token = jwt.encode({
             'id': self.pk,
