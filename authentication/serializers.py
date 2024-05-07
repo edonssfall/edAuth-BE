@@ -7,7 +7,6 @@ from django.utils.encoding import smart_bytes, force_str
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
-import os
 
 User = get_user_model()
 
@@ -102,9 +101,10 @@ class PasswordResetRequestSerializer(serializers.Serializer):
     return email url
     """
     email = serializers.EmailField()
+    url = serializers.URLField()
 
     class Meta:
-        fields = ['email']
+        fields = 'email', 'url'
 
     def validate(self, attrs):
         email = attrs.get('email')
@@ -112,7 +112,7 @@ class PasswordResetRequestSerializer(serializers.Serializer):
             user = User.objects.get(email=email)
             uidb64 = urlsafe_base64_encode(smart_bytes(user.id))
             token = PasswordResetTokenGenerator().make_token(user)
-            absolute_link = f"{os.getenv('FRONTEND_URL')}/{uidb64}/{token}"
+            absolute_link = f"{attrs.pop('url')}/{uidb64}/{token}"
             # body = (f'Hi, {user.get_full_name}\n'
             #         f'Here is link to reset password:\n'
             #         f'{absolute_link}')
