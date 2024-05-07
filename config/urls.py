@@ -15,7 +15,7 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from rest_framework_simplejwt.views import TokenRefreshView
-from apps.authentication.urls import authentication_router
+from authentication.urls import authentication_router
 from django.urls import path, include
 from rest_framework import routers
 from django.contrib import admin
@@ -24,8 +24,7 @@ router = routers.DefaultRouter(trailing_slash=False)
 router.registry.extend(authentication_router.registry)
 
 api_urlpatterns = [
-    path('social', include('apps.social_accounts.urls', namespace='authentication_social')),
-    path('', include('apps.authentication.urls', namespace='authentication_api')),
+    path('', include('authentication.urls', namespace='authentication_api')),
     path('token/refresh', TokenRefreshView.as_view(), name='token_refresh'),
     path('', include(router.urls)),
 ]
