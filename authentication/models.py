@@ -1,5 +1,5 @@
 from django.contrib.auth.base_user import AbstractBaseUser
-from apps.authentication.managers import CustomUserManager
+from authentication.managers import CustomUserManager
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth.models import PermissionsMixin
 from django.utils.translation import gettext_lazy as _

@@ -40,15 +40,13 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
 
-    'rest_framework',
-    'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
-    'corsheaders',
+    'rest_framework_simplejwt',
     'rest_framework.authtoken',
+    'rest_framework',
+    'corsheaders',
 
-    'apps.authentication.apps.AuthConfig',
-    'apps.achievements.apps.AchievementsConfig',
-    'apps.ddns.apps.DdnsConfig',
+    'authentication.apps.AuthConfig',
 ]
 
 MIDDLEWARE = [
@@ -171,7 +169,3 @@ SIMPLE_JWT = {
     'REFRESH_TOKEN_LIFETIME': timedelta(days=2),
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
-
-GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID')
-GOOGLE_CLIENT_SECRET = os.environ.get('GOOGLE_CLIENT_SECRET')
-SOCIAL_AUTH_PASSWORD = os.environ.get('SOCIAL_AUTH_PASSWORD')
