@@ -113,10 +113,6 @@ class PasswordResetRequestSerializer(serializers.Serializer):
             uidb64 = urlsafe_base64_encode(smart_bytes(user.id))
             token = PasswordResetTokenGenerator().make_token(user)
             absolute_link = f"{attrs.pop('url')}/{uidb64}/{token}"
-            # body = (f'Hi, {user.get_full_name}\n'
-            #         f'Here is link to reset password:\n'
-            #         f'{absolute_link}')
-            # send_email(subject='Password reset', body=body, to=[user.email])
             attrs['link'] = absolute_link
 
             return super().validate(attrs)
