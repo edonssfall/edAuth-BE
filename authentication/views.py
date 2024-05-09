@@ -106,3 +106,21 @@ class UserViewSet(viewsets.ModelViewSet):
             permission_classes.append(permissions.IsObjectOwner())
 
         return permission_classes
+
+
+class OwnUserAPIView(GenericAPIView):
+    """
+    Own user api view
+    """
+    permission_classes = [IsAuthenticated]
+    serializer_class = UserSerializer
+
+    def get(self, request):
+        """
+        Get user
+        """
+        user = request.user
+        response = user.tokens()
+        serializer = self.serializer_class(user)
+        response['user'] = serializer.data
+        return Response(response, status=status.HTTP_200_OK)
