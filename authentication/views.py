@@ -120,5 +120,7 @@ class OwnUserAPIView(GenericAPIView):
         Get user
         """
         user = request.user
+        response = user.tokens()
         serializer = self.serializer_class(user)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        response['user'] = serializer.data
+        return Response(response, status=status.HTTP_200_OK)
