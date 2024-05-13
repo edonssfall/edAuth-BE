@@ -123,21 +123,44 @@ class LoginUserAPIViewTests(TestCase):
     def setUp(self):
         self.client = APIClient()
         self.user = User.objects.create_user(email='test@example.com', password='password123')
+        self.data = {'email': self.user.email, 'password': 'password123'}
 
     def test_login_user_success(self):
-        data = {'username': 'testuser', 'password': 'password123'}
-        response = self.client.post(LOGIN_URL, data, format='json')
+        """
+        Test to log in a user successfully
+        """
+        response = self.client.post(LOGIN_URL, self.data, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn('access', response.data)
         self.assertIn('refresh', response.data)
         self.assertIn('user', response.data)
 
     def test_login_user_invalid_credentials(self):
-        data = {'username': 'testuser', 'password': 'invalidpassword'}
-        response = self.client.post(LOGIN_URL, data, format='json')
+        """
+        Test to log in a user with invalid password
+        """
+        self.data['password'] = 'invalidpassword'
+        response = self.client.post(LOGIN_URL, self.data, format='json')
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertIn('detail', response.data)
+        self.assertRaisesMessage(response.data['detail'][0], 'No active account found with the given credentials.')
 
-    def test_login_user_missing_fields(self):
-        data = {'username': 'testuser'}
-        response = self.client.post(LOGIN_URL, data, format='json')
+    def test_login_user_missing_password(self):
+        """
+        Test to log in a user with missing password
+        """
+        self.data.pop('password')
+        response = self.client.post(LOGIN_URL, self.data, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('password', response.data)
+        self.assertEqual(response.data['password'][0], 'This field is required.')
+
+    def test_login_user_missing_email(self):
+        """
+        Test to log in a user with missing email
+        """
+        self.data.pop('email')
+        response = self.client.post(LOGIN_URL, self.data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('email', response.data)
+        self.assertEqual(response.data['email'][0], 'This field is required.')
