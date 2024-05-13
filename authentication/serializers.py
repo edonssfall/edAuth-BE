@@ -1,12 +1,11 @@
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework.exceptions import AuthenticationFailed
+from authentication.utils import custom_validate_password
 from django.utils.encoding import smart_bytes, force_str
 from rest_framework_simplejwt.tokens import RefreshToken
-from django.core.exceptions import ValidationError
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
@@ -33,23 +32,7 @@ class RegisterSerializer(serializers.ModelSerializer):
     def validate_password(self, attrs):
         password = attrs
 
-        try:
-            validate_password(password)
-        except ValidationError as e:
-            raise serializers.ValidationError({'password': e.messages})
-
-        if len(password) < 8:
-            raise serializers.ValidationError({'password': "Password must be at least 8 characters long."})
-
-        if not any(char.isdigit() for char in password):
-            raise serializers.ValidationError({'password': "Password must contain at least one digit."})
-
-        special_characters = "!@#$%^&*()-_=+[{]}\|;:'\",<.>/?"
-        if not any(char in special_characters for char in password):
-            raise serializers.ValidationError({'password': "Password must contain at least one special character."})
-
-        if not any(char.isupper() for char in password):
-            raise serializers.ValidationError({'password': "Password must contain at least one uppercase letter."})
+        custom_validate_password(password)
 
         return attrs
 
@@ -84,6 +67,8 @@ class UserSerializer(serializers.ModelSerializer):
         password = validated_data.pop('password', None)
         new_password = validated_data.pop('new_password', None)
         repeat_new_password = validated_data.pop('repeat_new_password', None)
+
+        custom_validate_password(new_password)
 
         if password:
             if password == new_password:
@@ -158,6 +143,8 @@ class PasswordSetNewSerializer(serializers.Serializer):
             token = attrs.get('token')
             confirm_password = attrs.get('confirm_password')
 
+            custom_validate_password(password)
+
             user_id = force_str(urlsafe_base64_decode(uidb64))
             user = User.objects.get(id=user_id)
             if not PasswordResetTokenGenerator().check_token(user, token):
@@ -168,7 +155,7 @@ class PasswordSetNewSerializer(serializers.Serializer):
             user.save()
             return user
         except Exception as e:
-            raise AuthenticationFailed('Reset link is invalid or has expired', 401)
+            raise AuthenticationFailed(e, 401)
 
 
 class LogoutSerializer(serializers.Serializer):
