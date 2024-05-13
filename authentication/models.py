@@ -41,10 +41,7 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     objects = CustomUserManager()
 
-    def get_full_name(self):
-        """
-        return first name and last name
-        """
+    def __str__(self):
         return f'{self.first_name} {self.last_name}'
 
     def tokens(self):
@@ -56,14 +53,3 @@ class User(AbstractBaseUser, PermissionsMixin):
             'refresh': str(refresh),
             'access': str(refresh.access_token),
         }
-
-    def _generate_jwt_token(self):
-        """
-        generate jwt token for 60 days
-        """
-        date = datetime.now() + timedelta(days=60)
-        token = jwt.encode({
-            'id': self.pk,
-            'exp': int(date.strftime('%s'))
-        }, settings.SECRET_KEY, algorithm='HS256')
-        return token.decode('utf-8')

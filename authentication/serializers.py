@@ -1,10 +1,12 @@
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework.exceptions import AuthenticationFailed
 from django.utils.encoding import smart_bytes, force_str
 from rest_framework_simplejwt.tokens import RefreshToken
+from django.core.exceptions import ValidationError
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
@@ -22,19 +24,37 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ('password', 'repeat_password', 'email', 'first_name', 'last_name')
+        fields = 'password', 'repeat_password', 'email', 'first_name', 'last_name'
         extra_kwargs = {
             'first_name': {'required': True},
             'last_name': {'required': True}
         }
 
     def validate_password(self, attrs):
-        if attrs.get('password') != attrs.get('repeat_password'):
-            raise serializers.ValidationError({'password': "Password fields didn't match."})
+        password = attrs
+
+        try:
+            validate_password(password)
+        except ValidationError as e:
+            raise serializers.ValidationError({'password': e.messages})
+
+        if len(password) < 8:
+            raise serializers.ValidationError({'password': "Password must be at least 8 characters long."})
+
+        if not any(char.isdigit() for char in password):
+            raise serializers.ValidationError({'password': "Password must contain at least one digit."})
+
+        special_characters = "!@#$%^&*()-_=+[{]}\|;:'\",<.>/?"
+        if not any(char in special_characters for char in password):
+            raise serializers.ValidationError({'password': "Password must contain at least one special character."})
+
+        if not any(char.isupper() for char in password):
+            raise serializers.ValidationError({'password': "Password must contain at least one uppercase letter."})
 
         return attrs
 
     def create(self, validated_data):
+        validated_data.pop('repeat_password')
         user = User.objects.create(**validated_data)
 
         user.set_password(validated_data.get('password'))
@@ -54,8 +74,7 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['id', 'email', 'first_name', 'last_name', 'avatar', 'password', 'new_password', 'repeat_new_password',
-                  'groups']
+        fields = 'id', 'email', 'first_name', 'last_name', 'avatar', 'password', 'new_password', 'repeat_new_password', 'groups'
 
     def update(self, instance, validated_data):
         """
@@ -130,7 +149,7 @@ class PasswordSetNewSerializer(serializers.Serializer):
     token = serializers.CharField(write_only=True)
 
     class Meta:
-        fields = ['password', 'confirm_password', 'uidb64', 'token']
+        fields = 'password', 'confirm_password', 'uidb64', 'token'
 
     def validate(self, attrs):
         try:
