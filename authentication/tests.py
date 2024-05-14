@@ -195,6 +195,11 @@ class TestResetPassword(TestCase):
         self.assertIn('message', response.data)
         self.assertIn('data', response.data)
 
+    def helper_send_request(self):
+        response = self.client.post(SEND_RESET_PASSWORD_URL, self.data_reset, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        return response.data['data']
+
     def test_send_reset_password_invalid_email(self):
         """
         Test to send reset password link with invalid email
@@ -228,9 +233,7 @@ class TestResetPassword(TestCase):
         """
         Test to set new password
         """
-        response = self.client.post(SEND_RESET_PASSWORD_URL, self.data_reset, format='json')
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        response_data = response.data['data']
+        response_data = self.helper_send_request()
 
         self.data_set['uidb64'] = response_data['link'].split('/')[3]
         self.data_set['token'] = response_data['link'].split('/')[4]
@@ -248,9 +251,7 @@ class TestResetPassword(TestCase):
         """
         Test to set new password with invalid token
         """
-        response = self.client.post(SEND_RESET_PASSWORD_URL, self.data_reset, format='json')
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        response_data = response.data['data']
+        response_data = self.helper_send_request()
 
         self.data_set['uidb64'] = response_data['link'].split('/')[3]
         self.data_set['token'] = 'invalid'
@@ -263,9 +264,7 @@ class TestResetPassword(TestCase):
         """
         Test to set new password with invalid uidb64
         """
-        response = self.client.post(SEND_RESET_PASSWORD_URL, self.data_reset, format='json')
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        response_data = response.data['data']
+        response_data = self.helper_send_request()
 
         self.data_set['uidb64'] = 'invaliduidb64'
         self.data_set['token'] = response_data['link'].split('/')[4]
@@ -287,9 +286,7 @@ class TestResetPassword(TestCase):
         """
         Test to set new password without uidb64
         """
-        response = self.client.post(SEND_RESET_PASSWORD_URL, self.data_reset, format='json')
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        response_data = response.data['data']
+        response_data = self.helper_send_request()
 
         self.data_set['token'] = response_data['link'].split('/')[4]
 
@@ -300,9 +297,7 @@ class TestResetPassword(TestCase):
         """
         Test to set new password without token
         """
-        response = self.client.post(SEND_RESET_PASSWORD_URL, self.data_reset, format='json')
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        response_data = response.data['data']
+        response_data = self.helper_send_request()
 
         self.data_set['uidb64'] = response_data['link'].split('/')[3]
 
@@ -313,9 +308,7 @@ class TestResetPassword(TestCase):
         """
         Test to set new password with invalid passwords
         """
-        response = self.client.post(SEND_RESET_PASSWORD_URL, self.data_reset, format='json')
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        response_data = response.data['data']
+        response_data = self.helper_send_request()
 
         self.data_set['uidb64'] = response_data['link'].split('/')[3]
         self.data_set['token'] = response_data['link'].split('/')[4]
@@ -327,3 +320,17 @@ class TestResetPassword(TestCase):
             response = self.client.post(SIGNUP_URL, self.data_set, format='json')
             self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
             self.assertIn('password', response.data)
+
+    def test_set_with_not_same_passwords(self):
+        """
+        Test to set new password with not same passwords
+        """
+        response_data = self.helper_send_request()
+
+        self.data_set['uidb64'] = response_data['link'].split('/')[3]
+        self.data_set['token'] = response_data['link'].split('/')[4]
+        self.data_set['confirm_password'] = 'newpassword'
+
+        response = self.client.patch(SET_PASSWORD_URL, self.data_set, format='json')
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertRaisesMessage(response.data['detail'], 'Passwords do not match.')
