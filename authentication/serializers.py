@@ -30,10 +30,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         }
 
     def validate_password(self, attrs):
-        password = attrs
-
-        custom_validate_password(password)
-
+        custom_validate_password(attrs)
         return attrs
 
     def create(self, validated_data):
@@ -64,18 +61,16 @@ class UserSerializer(serializers.ModelSerializer):
         Update the user's location if provided in the request data
         Password is updated separately
         """
-        password = validated_data.pop('password', None)
         new_password = validated_data.pop('new_password', None)
         repeat_new_password = validated_data.pop('repeat_new_password', None)
 
-        custom_validate_password(new_password)
-
-        if password:
-            if password == new_password:
-                raise serializers.ValidationError("New password must be different from the old one.")
+        if new_password:
+            if instance.check_password(new_password):
+                raise serializers.ValidationError("New password must be different from the old password.")
             if new_password != repeat_new_password:
                 raise serializers.ValidationError("Passwords do not match.")
-            instance.set_password(password)
+            custom_validate_password(new_password)
+            instance.set_password(new_password)
             instance.save()
 
         return super().update(instance, validated_data)

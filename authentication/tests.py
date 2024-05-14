@@ -11,6 +11,7 @@ LOGIN_URL = '/api/auth/login'
 SEND_RESET_PASSWORD_URL = '/api/auth/password-reset'
 SET_PASSWORD_URL = '/api/auth/password-set'
 LOGOUT_URL = '/api/auth/logout'
+USER_URL = '/api/auth/profile'
 
 INVALID_PASSWORDS = [
     'password',
@@ -369,3 +370,139 @@ class LogoutUserAPIViewTests(TestCase):
         response = self.client.post(LOGOUT_URL)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertRaisesMessage(response.data['refresh_token'], 'This field may not be null.')
+
+
+class TestUserViewSet(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.password = 'Admin!23'
+        self.email2 = 'test2@example.com'
+        self.user = User.objects.create_user(email='test@example.com', password=self.password)
+        self.user2 = User.objects.create_user(email=self.email2, password=self.password)
+        self.client.force_authenticate(user=self.user)
+        self.url = f'{USER_URL}/{self.user.id}'
+
+
+    def test_update_user_profile_first_name(self):
+        """
+        Test to update user profile successfully
+        """
+        first_name = 'Updated First Name'
+        data = {
+            'first_name': first_name,
+        }
+        response = self.client.patch(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['first_name'], first_name)
+        self.assertTrue(User.objects.get(email=self.user.email).first_name, first_name)
+
+    def test_update_user_profile_last_name(self):
+        """
+        Test to update user profile successfully
+        """
+        last_name = 'Updated Last Name'
+        data = {
+            'last_name': last_name,
+        }
+        response = self.client.patch(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['last_name'], last_name)
+        self.assertTrue(User.objects.get(email=self.user.email).last_name, last_name)
+
+    def test_update_user_profile_avatar(self):
+        """
+        Test to update user profile successfully
+        """
+        avatar = 'https://example.com/avatar.jpg'
+        data = {
+            'avatar': avatar,
+        }
+        response = self.client.patch(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['avatar'], avatar)
+        self.assertTrue(User.objects.get(email=self.user.email).avatar, avatar)
+
+    def test_update_user_profile_email(self):
+        """
+        Test to update user profile successfully
+        """
+        email = 'example@test.com'
+        data = {
+            'email': email,
+        }
+        response = self.client.patch(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['email'], email)
+
+    def test_update_user_password_successfully(self):
+        password = 'Newtest!23'
+        data = {
+            'new_password': password,
+            'repeat_new_password': password,
+        }
+        response = self.client.patch(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(User.objects.get(email=self.user.email).check_password(password))
+
+    def test_update_user_password_with_invalid_passwords(self):
+        """
+        Test to update user password with invalid passwords
+        """
+        for i, password in enumerate(INVALID_PASSWORDS):
+            data = {
+                'new_password': password,
+                'repeat_new_password': password,
+            }
+            response = self.client.patch(self.url, data, format='json')
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+            self.assertIn('password', response.data)
+            self.assertRaisesMessage(response.data['password'][0], ERRORS_PASSWORDS[i])
+
+    def test_update_user_password_with_existing_passwords(self):
+        """
+        Test to update user password with existing password
+        """
+        data = {
+            'new_password': self.password,
+            'repeat_new_password': self.password,
+        }
+        response = self.client.patch(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertRaisesMessage(response.data[0], 'New password must be different from the old password.')
+
+    def test_change_email_to_existing_email(self):
+        """
+        Test to change email to an existing email
+        """
+        response = self.client.patch(self.url, {'email': self.email2}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('email', response.data)
+
+    def test_update_others_user_profile(self):
+        """
+        Test to update another user profile
+        """
+        response = self.client.patch(f'{USER_URL}/{self.user2.id}', {'first_name': 'Updated First Name'}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_delete_other_user(self):
+        """
+        Test to delete another user
+        """
+        response = self.client.delete(f'{USER_URL}/{self.user2.id}')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_update_user_groups(self):
+        """
+        Test to update user groups
+        """
+        # TODO: Implement this test
+        response = self.client.patch(self.url, {'groups': [0, 1, 2]}, format='json')
+
+    def test_delete_own_user(self):
+        """
+        Test to delete own user
+        """
+        response = self.client.delete(self.url)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(User.objects.filter(email=self.user.email).exists())
