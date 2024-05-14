@@ -11,11 +11,23 @@ LOGIN_URL = '/api/auth/login'
 SEND_RESET_PASSWORD_URL = '/api/auth/password-reset'
 SET_PASSWORD_URL = '/api/auth/password-set'
 
+INVALID_PASSWORDS = [
+    'password',
+    'alllowercase',
+    'ALLUPPERCASE',
+    'nouppercase123!',
+    'NoSpecialCharacter123',
+]
+
+ERRORS_PASSWORDS = [
+]
+
 
 class TestSignUp(TestCase):
     """
     Tests for user registration
     """
+
     def setUp(self):
         self.client = APIClient()
         self.data = {
@@ -93,15 +105,8 @@ class TestSignUp(TestCase):
         """
         Test to register a new user with invalid password
         """
-        invalid_passwords = [
-            'password',
-            'alllowercase',
-            'ALLUPPERCASE',
-            'nouppercase123!',
-            'NoSpecialCharacter123',
-        ]
 
-        for i, password in enumerate(invalid_passwords):
+        for i, password in enumerate(INVALID_PASSWORDS):
             self.data['password'] = password
             self.data['repeat_password'] = password
             # Send a request to the API with invalid password
@@ -122,6 +127,7 @@ class LoginUserAPIViewTests(TestCase):
     """
     Tests for user login
     """
+
     def setUp(self):
         self.client = APIClient()
         self.user = User.objects.create_user(email='test@example.com', password='password123')
@@ -172,17 +178,19 @@ class TestResetPassword(TestCase):
     """
     Tests for sending reset password link
     """
+
     def setUp(self):
         self.client = APIClient()
         self.new_password = 'Newpassword!23'
         self.user = User.objects.create_user(email='test@example.com', password='password123')
-        self.data = {'email': self.user.email, 'url': 'http://localhost'}
+        self.data_reset = {'email': self.user.email, 'url': 'http://localhost'}
+        self.data_set = {'password': self.new_password, 'confirm_password': self.new_password}
 
     def test_send_reset_password_success(self):
         """
         Test to send reset password link successfully
         """
-        response = self.client.post(SEND_RESET_PASSWORD_URL, self.data, format='json')
+        response = self.client.post(SEND_RESET_PASSWORD_URL, self.data_reset, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn('message', response.data)
         self.assertIn('data', response.data)
@@ -191,19 +199,18 @@ class TestResetPassword(TestCase):
         """
         Test to send reset password link with invalid email
         """
-        self.data['email'] = 'example@test.com'
-        response = self.client.post(SEND_RESET_PASSWORD_URL, self.data, format='json')
+        self.data_reset['email'] = 'example@test.com'
+        response = self.client.post(SEND_RESET_PASSWORD_URL, self.data_reset, format='json')
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
         self.assertIn('detail', response.data)
         self.assertRaisesMessage(response.data['detail'][0], 'Email does not exist.')
-
 
     def test_send_reset_password_without_email(self):
         """
         Test to send reset password link without email
         """
-        self.data['email'] = ''
-        response = self.client.post(SEND_RESET_PASSWORD_URL, self.data, format='json')
+        self.data_reset['email'] = ''
+        response = self.client.post(SEND_RESET_PASSWORD_URL, self.data_reset, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertRaisesMessage(response.data['email'][0], 'This field may not be blank.')
 
@@ -211,8 +218,8 @@ class TestResetPassword(TestCase):
         """
         Test to send reset password link without url
         """
-        self.data['url'] = ''
-        response = self.client.post(SEND_RESET_PASSWORD_URL, self.data, format='json')
+        self.data_reset['url'] = ''
+        response = self.client.post(SEND_RESET_PASSWORD_URL, self.data_reset, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('url', response.data)
         self.assertRaisesMessage(response.data['url'][0], 'This field may not be blank.')
@@ -221,20 +228,14 @@ class TestResetPassword(TestCase):
         """
         Test to set new password
         """
-        response = self.client.post(SEND_RESET_PASSWORD_URL, self.data, format='json')
+        response = self.client.post(SEND_RESET_PASSWORD_URL, self.data_reset, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         response_data = response.data['data']
 
-        uidb64 = response_data['link'].split('/')[3]
-        token = response_data['link'].split('/')[4]
-        data = {
-            'password': self.new_password,
-            'confirm_password': self.new_password,
-            'uidb64': uidb64,
-            'token': token,
-        }
+        self.data_set['uidb64'] = response_data['link'].split('/')[3]
+        self.data_set['token'] = response_data['link'].split('/')[4]
 
-        response = self.client.patch(SET_PASSWORD_URL, data, format='json')
+        response = self.client.patch(SET_PASSWORD_URL, self.data_set, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         response = self.client.post(LOGIN_URL, {'email': self.user.email, 'password': self.new_password}, format='json')
@@ -247,19 +248,14 @@ class TestResetPassword(TestCase):
         """
         Test to set new password with invalid token
         """
-        response = self.client.post(SEND_RESET_PASSWORD_URL, self.data, format='json')
+        response = self.client.post(SEND_RESET_PASSWORD_URL, self.data_reset, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         response_data = response.data['data']
 
-        uidb64 = response_data['link'].split('/')[3]
-        data = {
-            'password': self.new_password,
-            'confirm_password': self.new_password,
-            'uidb64': uidb64,
-            'token': 'invalidtoken',
-        }
+        self.data_set['uidb64'] = response_data['link'].split('/')[3]
+        self.data_set['token'] = 'invalid'
 
-        response = self.client.patch(SET_PASSWORD_URL, data, format='json')
+        response = self.client.patch(SET_PASSWORD_URL, self.data_set, format='json')
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
         self.assertRaisesMessage(response.data['detail'], 'Reset link is invalid or has expired')
 
@@ -267,19 +263,14 @@ class TestResetPassword(TestCase):
         """
         Test to set new password with invalid uidb64
         """
-        response = self.client.post(SEND_RESET_PASSWORD_URL, self.data, format='json')
+        response = self.client.post(SEND_RESET_PASSWORD_URL, self.data_reset, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         response_data = response.data['data']
 
-        token = response_data['link'].split('/')[4]
-        data = {
-            'password': self.new_password,
-            'confirm_password': self.new_password,
-            'uidb64': 'invaliduidb64',
-            'token': token,
-        }
+        self.data_set['uidb64'] = 'invaliduidb64'
+        self.data_set['token'] = response_data['link'].split('/')[4]
 
-        response = self.client.patch(SET_PASSWORD_URL, data, format='json')
+        response = self.client.patch(SET_PASSWORD_URL, self.data_set, format='json')
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
         self.assertRaisesMessage(response.data['detail'], 'Reset link is invalid or has expired')
 
@@ -287,12 +278,7 @@ class TestResetPassword(TestCase):
         """
         Test to set new password without tokens
         """
-        data = {
-            'password': self.new_password,
-            'confirm_password': self.new_password,
-        }
-
-        response = self.client.patch(SET_PASSWORD_URL, data, format='json')
+        response = self.client.patch(SET_PASSWORD_URL, self.data_set, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertRaisesMessage(response.data['uidb64'][0], 'This field is required.')
         self.assertRaisesMessage(response.data['token'][0], 'This field is required.')
@@ -301,65 +287,43 @@ class TestResetPassword(TestCase):
         """
         Test to set new password without uidb64
         """
-        response = self.client.post(SEND_RESET_PASSWORD_URL, self.data, format='json')
+        response = self.client.post(SEND_RESET_PASSWORD_URL, self.data_reset, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         response_data = response.data['data']
 
-        token = response_data['link'].split('/')[4]
-        data = {
-            'password': self.new_password,
-            'confirm_password': self.new_password,
-            'token': token,
-        }
+        self.data_set['token'] = response_data['link'].split('/')[4]
 
-        response = self.client.patch(SET_PASSWORD_URL, data, format='json')
+        response = self.client.patch(SET_PASSWORD_URL, self.data_set, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_set_password_without_token(self):
         """
         Test to set new password without token
         """
-        response = self.client.post(SEND_RESET_PASSWORD_URL, self.data, format='json')
+        response = self.client.post(SEND_RESET_PASSWORD_URL, self.data_reset, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         response_data = response.data['data']
 
-        uidb64 = response_data['link'].split('/')[3]
-        data = {
-            'password': self.new_password,
-            'confirm_password': self.new_password,
-            'uidb64': uidb64,
-        }
+        self.data_set['uidb64'] = response_data['link'].split('/')[3]
 
-        response = self.client.patch(SET_PASSWORD_URL, data, format='json')
+        response = self.client.patch(SET_PASSWORD_URL, self.data_set, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_set_with_invalid_new_password(self):
         """
         Test to set new password with invalid passwords
         """
-        response = self.client.post(SEND_RESET_PASSWORD_URL, self.data, format='json')
+        response = self.client.post(SEND_RESET_PASSWORD_URL, self.data_reset, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         response_data = response.data['data']
 
-        uidb64 = response_data['link'].split('/')[3]
-        token = response_data['link'].split('/')[4]
+        self.data_set['uidb64'] = response_data['link'].split('/')[3]
+        self.data_set['token'] = response_data['link'].split('/')[4]
 
-        invalid_passwords = [
-            'password',
-            'alllowercase',
-            'ALLUPPERCASE',
-            'nouppercase123!',
-            'NoSpecialCharacter123',
-        ]
-
-        for i, password in enumerate(invalid_passwords):
-            data = {
-                'password': password,
-                'confirm_password': password,
-                'uidb64': uidb64,
-                'token': token,
-            }
+        for i, password in enumerate(INVALID_PASSWORDS):
+            self.data_set['password'] = password
+            self.data_set['confirm_password'] = password
             # Send a request to the API with invalid password
-            response = self.client.post(SIGNUP_URL, data, format='json')
+            response = self.client.post(SIGNUP_URL, self.data_set, format='json')
             self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
             self.assertIn('password', response.data)
