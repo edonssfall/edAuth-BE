@@ -10,16 +10,20 @@ SIGNUP_URL = '/api/auth/signup'
 LOGIN_URL = '/api/auth/login'
 SEND_RESET_PASSWORD_URL = '/api/auth/password-reset'
 SET_PASSWORD_URL = '/api/auth/password-set'
+LOGOUT_URL = '/api/auth/logout'
 
 INVALID_PASSWORDS = [
     'password',
-    'alllowercase',
-    'ALLUPPERCASE',
+    'nodigit!@#',
     'nouppercase123!',
     'NoSpecialCharacter123',
 ]
 
 ERRORS_PASSWORDS = [
+    'This password is too common',
+    'Password must contain at least one digit.',
+    'Password must contain at least one uppercase letter.',
+    'Password must contain at least one special character.',
 ]
 
 
@@ -113,6 +117,7 @@ class TestSignUp(TestCase):
             response = self.client.post(SIGNUP_URL, self.data, format='json')
             self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
             self.assertIn('password', response.data)
+            self.assertRaisesMessage(response.data['password']['password'][0], ERRORS_PASSWORDS[i])
 
     def test_signup_same_email(self):
         response = self.client.post(SIGNUP_URL, self.data, format='json')
@@ -320,6 +325,7 @@ class TestResetPassword(TestCase):
             response = self.client.post(SIGNUP_URL, self.data_set, format='json')
             self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
             self.assertIn('password', response.data)
+            self.assertRaisesMessage(response.data['password']['password'][0], ERRORS_PASSWORDS[i])
 
     def test_set_with_not_same_passwords(self):
         """
@@ -334,3 +340,32 @@ class TestResetPassword(TestCase):
         response = self.client.patch(SET_PASSWORD_URL, self.data_set, format='json')
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
         self.assertRaisesMessage(response.data['detail'], 'Passwords do not match.')
+
+class LogoutUserAPIViewTests(TestCase):
+    """
+    Tests for user logout
+    """
+
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(email='test@example.com',password='Strongpassword!23',
+                                             first_name='John', last_name='Doe'
+        )
+
+        self.client.force_authenticate(user=self.user)
+
+    def test_successful_logout(self):
+        """
+        Test to log out a user successfully
+        """
+        self.client.cookies.load({'refresh': self.user.tokens()['refresh']})
+        response = self.client.post(LOGOUT_URL)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_logout_without_token(self):
+        """
+        Test to log out a user without token
+        """
+        response = self.client.post(LOGOUT_URL)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertRaisesMessage(response.data['refresh_token'], 'This field may not be null.')
