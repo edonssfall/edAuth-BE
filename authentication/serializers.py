@@ -3,6 +3,7 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework.exceptions import AuthenticationFailed
+from authentication.utils import custom_validate_password
 from django.utils.encoding import smart_bytes, force_str
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import get_user_model
@@ -22,19 +23,18 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ('password', 'repeat_password', 'email', 'first_name', 'last_name')
+        fields = 'password', 'repeat_password', 'email', 'first_name', 'last_name'
         extra_kwargs = {
             'first_name': {'required': True},
             'last_name': {'required': True}
         }
 
     def validate_password(self, attrs):
-        if attrs.get('password') != attrs.get('repeat_password'):
-            raise serializers.ValidationError({'password': "Password fields didn't match."})
-
+        custom_validate_password(attrs)
         return attrs
 
     def create(self, validated_data):
+        validated_data.pop('repeat_password')
         user = User.objects.create(**validated_data)
 
         user.set_password(validated_data.get('password'))
@@ -54,24 +54,23 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['id', 'email', 'first_name', 'last_name', 'avatar', 'password', 'new_password', 'repeat_new_password',
-                  'groups']
+        fields = 'id', 'email', 'first_name', 'last_name', 'avatar', 'password', 'new_password', 'repeat_new_password', 'groups'
 
     def update(self, instance, validated_data):
         """
         Update the user's location if provided in the request data
         Password is updated separately
         """
-        password = validated_data.pop('password', None)
         new_password = validated_data.pop('new_password', None)
         repeat_new_password = validated_data.pop('repeat_new_password', None)
 
-        if password:
-            if password == new_password:
-                raise serializers.ValidationError("New password must be different from the old one.")
+        if new_password:
+            if instance.check_password(new_password):
+                raise serializers.ValidationError("New password must be different from the old password.")
             if new_password != repeat_new_password:
                 raise serializers.ValidationError("Passwords do not match.")
-            instance.set_password(password)
+            custom_validate_password(new_password)
+            instance.set_password(new_password)
             instance.save()
 
         return super().update(instance, validated_data)
@@ -130,7 +129,7 @@ class PasswordSetNewSerializer(serializers.Serializer):
     token = serializers.CharField(write_only=True)
 
     class Meta:
-        fields = ['password', 'confirm_password', 'uidb64', 'token']
+        fields = 'password', 'confirm_password', 'uidb64', 'token'
 
     def validate(self, attrs):
         try:
@@ -138,6 +137,8 @@ class PasswordSetNewSerializer(serializers.Serializer):
             uidb64 = attrs.get('uidb64')
             token = attrs.get('token')
             confirm_password = attrs.get('confirm_password')
+
+            custom_validate_password(password)
 
             user_id = force_str(urlsafe_base64_decode(uidb64))
             user = User.objects.get(id=user_id)
@@ -149,7 +150,7 @@ class PasswordSetNewSerializer(serializers.Serializer):
             user.save()
             return user
         except Exception as e:
-            raise AuthenticationFailed('Reset link is invalid or has expired', 401)
+            raise AuthenticationFailed(e, 401)
 
 
 class LogoutSerializer(serializers.Serializer):
