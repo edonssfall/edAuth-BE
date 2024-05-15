@@ -34,6 +34,9 @@ class TestsSignUp(TestCase):
     """
 
     def setUp(self):
+        """
+        Set up method to initialize test data and client.
+        """
         self.client = APIClient()
         self.data = {
             'email': 'test@example.com',
@@ -44,25 +47,36 @@ class TestsSignUp(TestCase):
         }
 
     def tearDown(self):
+        """
+        Tear down method to clean up after each test.
+        """
+        # Log out the client and delete all users created during tests
         self.client.logout()
         User.objects.all().delete()
 
     def test_register_user_success(self):
         """
-        Test to register a new user
+        Test to register a new user successfully.
         """
+        # Send a POST request to the signup URL with valid data
         response = self.client.post(SIGNUP_URL, self.data, format='json')
+        # Check if the response status code is 201 (created)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        # Check if the returned data contains the email provided
         self.assertIn('email', response.data)
         self.assertEqual(response.data['email'], 'test@example.com')
 
     def test_missing_email(self):
         """
-        Test to register a new user with missing email
+        Test to register a new user with missing email.
         """
+        # Remove the email key from the data
         self.data.pop('email')
+        # Send a POST request to the signup URL with missing email
         response = self.client.post(SIGNUP_URL, self.data, format='json')
+        # Check if the response status code is 400 (bad request)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        # Check if the response data contains an error message for missing email field
         self.assertIn('email', response.data)
         self.assertEqual(response.data['email'][0], 'This field is required.')
 
