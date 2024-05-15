@@ -28,7 +28,7 @@ ERRORS_PASSWORDS = [
 ]
 
 
-class TestSignUp(TestCase):
+class TestsSignUp(TestCase):
     """
     Tests for user registration
     """
@@ -129,7 +129,7 @@ class TestSignUp(TestCase):
             self.client.post(SIGNUP_URL, self.data, format='json')
 
 
-class LoginUserAPIViewTests(TestCase):
+class TestsLoginUserAPIView(TestCase):
     """
     Tests for user login
     """
@@ -342,7 +342,7 @@ class TestResetPassword(TestCase):
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
         self.assertRaisesMessage(response.data['detail'], 'Passwords do not match.')
 
-class LogoutUserAPIViewTests(TestCase):
+class TestsLogoutUserAPIView(TestCase):
     """
     Tests for user logout
     """
@@ -372,7 +372,7 @@ class LogoutUserAPIViewTests(TestCase):
         self.assertRaisesMessage(response.data['refresh_token'], 'This field may not be null.')
 
 
-class TestUserViewSet(TestCase):
+class TestsUserViewSet(TestCase):
     def setUp(self):
         self.client = APIClient()
         self.password = 'Admin!23'
@@ -508,7 +508,7 @@ class TestUserViewSet(TestCase):
         self.assertFalse(User.objects.filter(email=self.user.email).exists())
 
 
-class TestOwnUserAPIView(TestCase):
+class TestsOwnUserAPIView(TestCase):
     """
     Tests for own user profile
     """
