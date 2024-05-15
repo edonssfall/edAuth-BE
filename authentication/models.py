@@ -3,11 +3,8 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth.models import PermissionsMixin
 from django.utils.translation import gettext_lazy as _
 from authentication.managers import CustomUserManager
-from datetime import datetime, timedelta
 from django.utils import timezone
-from django.conf import settings
 from django.db import models
-import jwt
 
 
 class User(AbstractBaseUser, PermissionsMixin):
@@ -17,7 +14,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     id = models.BigAutoField(primary_key=True)
     first_name = models.CharField(_('first name'), max_length=150, blank=True, null=True)
     last_name = models.CharField(_('last name'), max_length=150, blank=True, null=True)
-    avatar = models.CharField(_('avatar'), max_length=256, blank=True, null=True)
+    avatar = models.URLField(_('avatar'), max_length=256, blank=True, null=True)
     email = models.EmailField(_('email address'), blank=True, unique=True)
     date_joined = models.DateTimeField(_('date joined'), default=timezone.now)
     last_login = models.DateTimeField(_('last loging'), default=timezone.now)

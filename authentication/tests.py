@@ -497,7 +497,7 @@ class TestUserViewSet(TestCase):
         Test to update user groups
         """
         # TODO: Implement this test
-        response = self.client.patch(self.url, {'groups': [0, 1, 2]}, format='json')
+        response = self.client.patch(self.url, {'groups': [1, 2]}, format='json')
 
     def test_delete_own_user(self):
         """
@@ -506,3 +506,34 @@ class TestUserViewSet(TestCase):
         response = self.client.delete(self.url)
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(User.objects.filter(email=self.user.email).exists())
+
+
+class TestOwnUserAPIView(TestCase):
+    """
+    Tests for own user profile
+    """
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(email='test@example.com', password='Strongpassword!23',
+                                             first_name='John', last_name='Doe')
+
+    def test_get_profile(self):
+        """
+        Test to get user profile
+        """
+        self.client.force_authenticate(user=self.user)
+        response = self.client.get(USER_URL)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data[0]['email'], self.user.email)
+        self.assertEqual(response.data[0]['first_name'], self.user.first_name)
+        self.assertEqual(response.data[0]['last_name'], self.user.last_name)
+        self.assertEqual(response.data[0]['id'], self.user.id)
+
+    def test_get_profile_unauthenticated(self):
+        """
+        Test to get user profile unauthenticated
+        """
+        response = self.client.get(USER_URL)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertIn('detail', response.data)
+        self.assertRaisesMessage(response.data['detail'], 'Authentication credentials were not provided.')
