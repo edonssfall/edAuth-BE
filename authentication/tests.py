@@ -668,7 +668,7 @@ class TestsOwnUserAPIView(TestCase):
         self.client.force_authenticate(user=self.user)
         # Send a request to retrieve user profile
         response = self.client.get(USER_URL)
-        # Check if the response indicates success (status code 200)
+        # Check if the response indicates success status code 200
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         # Check if the returned data matches the user's profile
         self.assertEqual(response.data[0]['email'], self.user.email)
