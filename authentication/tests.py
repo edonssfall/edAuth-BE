@@ -231,7 +231,7 @@ class TestsLoginUserAPIView(TestCase):
         self.assertEqual(response.data['email'][0], 'This field is required.')
 
 
-class TestResetPassword(TestCase):
+class TestsResetPassword(TestCase):
     """
     Tests for sending reset password link
     """
