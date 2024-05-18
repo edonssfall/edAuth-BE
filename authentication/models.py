@@ -38,10 +38,10 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     objects = CustomUserManager()
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f'{self.first_name} {self.last_name}'
 
-    def tokens(self):
+    def tokens(self) -> dict:
         """
         return two tokens
         """

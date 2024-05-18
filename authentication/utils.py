@@ -3,7 +3,7 @@ from django.core.exceptions import ValidationError
 from rest_framework import serializers
 
 
-def custom_validate_password(password):
+def custom_validate_password(password) -> None:
     try:
         validate_password(password)
     except ValidationError as e:
