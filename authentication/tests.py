@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Group
 from rest_framework.test import APIClient
 from django.db import IntegrityError
 from rest_framework import status
@@ -33,7 +34,7 @@ class TestsSignUp(TestCase):
     Tests for user registration
     """
 
-    def setUp(self):
+    def setUp(self) -> None:
         """
         Set up method to initialize test data and client.
         """
@@ -46,7 +47,7 @@ class TestsSignUp(TestCase):
             'last_name': 'Doe'
         }
 
-    def tearDown(self):
+    def tearDown(self) -> None:
         """
         Tear down method to clean up after each test.
         """
@@ -54,7 +55,7 @@ class TestsSignUp(TestCase):
         self.client.logout()
         User.objects.all().delete()
 
-    def test_register_user_success(self):
+    def test_register_user_success(self) -> None:
         """
         Test to register a new user successfully.
         """
@@ -66,7 +67,7 @@ class TestsSignUp(TestCase):
         self.assertIn('email', response.data)
         self.assertEqual(response.data['email'], 'test@example.com')
 
-    def test_missing_email(self):
+    def test_missing_email(self) -> None:
         """
         Test to register a new user with missing email.
         """
@@ -80,7 +81,7 @@ class TestsSignUp(TestCase):
         self.assertIn('email', response.data)
         self.assertEqual(response.data['email'][0], 'This field is required.')
 
-    def test_missing_first_name(self):
+    def test_missing_first_name(self) -> None:
         """
         Test to register a new user with missing first name.
         """
@@ -94,7 +95,7 @@ class TestsSignUp(TestCase):
         self.assertIn('first_name', response.data)
         self.assertEqual(response.data['first_name'][0], 'This field is required.')
 
-    def test_missing_last_name(self):
+    def test_missing_last_name(self) -> None:
         """
         Test to register a new user with missing last name.
         """
@@ -108,7 +109,7 @@ class TestsSignUp(TestCase):
         self.assertIn('last_name', response.data)
         self.assertEqual(response.data['last_name'][0], 'This field is required.')
 
-    def test_missing_password(self):
+    def test_missing_password(self) -> None:
         """
         Test to register a new user with missing password.
         """
@@ -122,7 +123,7 @@ class TestsSignUp(TestCase):
         self.assertIn('password', response.data)
         self.assertEqual(response.data['password'][0], 'This field is required.')
 
-    def test_missing_repeat_password(self):
+    def test_missing_repeat_password(self) -> None:
         """
         Test to register a new user with missing repeat password.
         """
@@ -136,7 +137,7 @@ class TestsSignUp(TestCase):
         self.assertIn('repeat_password', response.data)
         self.assertEqual(response.data['repeat_password'][0], 'This field is required.')
 
-    def test_register_user_invalid_password(self):
+    def test_register_user_invalid_password(self) -> None:
         """
         Test to register a new user with invalid password.
         """
@@ -152,7 +153,7 @@ class TestsSignUp(TestCase):
             self.assertIn('password', response.data)
             self.assertRaisesMessage(response.data['password']['password'][0], ERRORS_PASSWORDS[i])
 
-    def test_signup_same_email(self):
+    def test_signup_same_email(self) -> None:
         """
         Test attempting to register a user with an already existing email.
         """
@@ -175,7 +176,7 @@ class TestsLoginUserAPIView(TestCase):
         self.user = User.objects.create_user(email='test@example.com', password='password123')
         self.data = {'email': self.user.email, 'password': 'password123'}
 
-    def test_login_user_success(self):
+    def test_login_user_success(self) -> None:
         """
         Test to log in a user successfully.
         """
@@ -188,7 +189,7 @@ class TestsLoginUserAPIView(TestCase):
         self.assertIn('refresh', response.data)
         self.assertIn('user', response.data)
 
-    def test_login_user_invalid_credentials(self):
+    def test_login_user_invalid_credentials(self) -> None:
         """
         Test to log in a user with invalid password.
         """
@@ -202,7 +203,7 @@ class TestsLoginUserAPIView(TestCase):
         self.assertIn('detail', response.data)
         self.assertRaisesMessage(response.data['detail'][0], 'No active account found with the given credentials.')
 
-    def test_login_user_missing_password(self):
+    def test_login_user_missing_password(self) -> None:
         """
         Test to log in a user with missing password.
         """
@@ -216,7 +217,7 @@ class TestsLoginUserAPIView(TestCase):
         self.assertIn('password', response.data)
         self.assertEqual(response.data['password'][0], 'This field is required.')
 
-    def test_login_user_missing_email(self):
+    def test_login_user_missing_email(self) -> None:
         """
         Test to log in a user with missing email.
         """
@@ -243,7 +244,15 @@ class TestsResetPassword(TestCase):
         self.data_reset = {'email': self.user.email, 'url': 'http://localhost'}
         self.data_set = {'password': self.new_password, 'confirm_password': self.new_password}
 
-    def test_send_reset_password_success(self):
+    def helper_send_request(self) -> dict:
+        """
+        Helper method to send a reset password request and return the response data.
+        """
+        response = self.client.post(SEND_RESET_PASSWORD_URL, self.data_reset, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        return response.data['data']
+
+    def test_send_reset_password_success(self) -> None:
         """
         Test to send reset password link successfully.
         """
@@ -255,13 +264,7 @@ class TestsResetPassword(TestCase):
         self.assertIn('message', response.data)
         self.assertIn('data', response.data)
 
-    def helper_send_request(self):
-        # Helper method to send a reset password request and return the response data
-        response = self.client.post(SEND_RESET_PASSWORD_URL, self.data_reset, format='json')
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        return response.data['data']
-
-    def test_send_reset_password_invalid_email(self):
+    def test_send_reset_password_invalid_email(self) -> None:
         """
         Test to send reset password link with invalid email.
         """
@@ -275,7 +278,7 @@ class TestsResetPassword(TestCase):
         self.assertIn('detail', response.data)
         self.assertRaisesMessage(response.data['detail'][0], 'Email does not exist.')
 
-    def test_send_reset_password_without_email(self):
+    def test_send_reset_password_without_email(self) -> None:
         """
         Test to send reset password link without email.
         """
@@ -288,7 +291,7 @@ class TestsResetPassword(TestCase):
         # Check if the response data contains the expected error message
         self.assertRaisesMessage(response.data['email'][0], 'This field may not be blank.')
 
-    def test_send_password_without_back_url(self):
+    def test_send_password_without_back_url(self) -> None:
         """
         Test to send reset password link without URL.
         """
@@ -302,7 +305,7 @@ class TestsResetPassword(TestCase):
         self.assertIn('url', response.data)
         self.assertRaisesMessage(response.data['url'][0], 'This field may not be blank.')
 
-    def test_set_new_password_success(self):
+    def test_set_new_password_success(self) -> None:
         """
         Test to set a new password.
         """
@@ -322,7 +325,7 @@ class TestsResetPassword(TestCase):
         self.assertIn('refresh', response.data)
         self.assertIn('user', response.data)
 
-    def test_set_new_password_with_invalid_token(self):
+    def test_set_new_password_with_invalid_token(self) -> None:
         """
         Test to set a new password with an invalid token.
         """
@@ -339,7 +342,7 @@ class TestsResetPassword(TestCase):
         # Check if the response data contains the expected error message
         self.assertRaisesMessage(response.data['detail'], 'Reset link is invalid or has expired')
 
-    def test_set_new_password_with_invalid_uidb64(self):
+    def test_set_new_password_with_invalid_uidb64(self) -> None:
         """
         Test to set a new password with an invalid UIDB64.
         """
@@ -355,7 +358,7 @@ class TestsResetPassword(TestCase):
         # Check if the response data contains the expected error message
         self.assertRaisesMessage(response.data['detail'], 'Reset link is invalid or has expired')
 
-    def test_set_password_without_tokens(self):
+    def test_set_password_without_tokens(self) -> None:
         """
         Test to set a new password without tokens.
         """
@@ -367,7 +370,7 @@ class TestsResetPassword(TestCase):
         self.assertRaisesMessage(response.data['uidb64'][0], 'This field is required.')
         self.assertRaisesMessage(response.data['token'][0], 'This field is required.')
 
-    def test_set_password_without_uidb64(self):
+    def test_set_password_without_uidb64(self) -> None:
         """
         Test to set a new password without UIDB64.
         """
@@ -380,7 +383,7 @@ class TestsResetPassword(TestCase):
         # Check if the response status code is 400 (BAD REQUEST)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
-    def test_set_password_without_token(self):
+    def test_set_password_without_token(self) -> None:
         """
         Test to set a new password without token.
         """
@@ -393,7 +396,7 @@ class TestsResetPassword(TestCase):
         # Check if the response status code is 400 (BAD REQUEST)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
-    def test_set_with_invalid_new_password(self):
+    def test_set_with_invalid_new_password(self) -> None:
         """
         Test to set a new password with invalid passwords.
         """
@@ -414,7 +417,7 @@ class TestsResetPassword(TestCase):
             self.assertIn('password', response.data)
             self.assertRaisesMessage(response.data['password']['password'][0], ERRORS_PASSWORDS[i])
 
-    def test_set_with_not_same_passwords(self):
+    def test_set_with_not_same_passwords(self) -> None:
         """
         Test to set a new password with passwords that do not match.
         """
@@ -446,7 +449,7 @@ class TestsLogoutUserAPIView(TestCase):
 
         self.client.force_authenticate(user=self.user)
 
-    def test_successful_logout(self):
+    def test_successful_logout(self) -> None:
         """
         Test to log out a user successfully.
         """
@@ -457,7 +460,7 @@ class TestsLogoutUserAPIView(TestCase):
         # Check if the response status code is 200 (OK)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-    def test_logout_without_token(self):
+    def test_logout_without_token(self) -> None:
         """
         Test to log out a user without a token.
         """
@@ -474,6 +477,7 @@ class TestsUserViewSet(TestCase):
         """
         Set up the test environment by creating users and authenticating the client.
         """
+        self.email2 = 'test2@example.com'
         # Create APIClient instance
         self.client = APIClient()
         # Set password for user
@@ -481,12 +485,17 @@ class TestsUserViewSet(TestCase):
         # Create two users
         self.user = User.objects.create_user(email='test@example.com', password=self.password)
         self.user2 = User.objects.create_user(email=self.email2, password=self.password)
+
+        group1 = Group.objects.create(name='admin')
+        group2 = Group.objects.create(name='user')
+        self.groups = [group1.id, group2.id]
+
         # Force authenticate the client with the first user
         self.client.force_authenticate(user=self.user)
         # Define the URL for the user profile
         self.url = f'{USER_URL}/{self.user.id}'
 
-    def test_update_user_profile_first_name(self):
+    def test_update_user_profile_first_name(self) -> None:
         """
         Test updating user profile's first name.
         """
@@ -503,7 +512,7 @@ class TestsUserViewSet(TestCase):
         # Check if first name is updated in the database
         self.assertTrue(User.objects.get(email=self.user.email).first_name, first_name)
 
-    def test_update_user_profile_last_name(self):
+    def test_update_user_profile_last_name(self) -> None:
         """
         Test updating user profile's last name.
         """
@@ -520,7 +529,7 @@ class TestsUserViewSet(TestCase):
         # Check if last name is updated in the database
         self.assertTrue(User.objects.get(email=self.user.email).last_name, last_name)
 
-    def test_update_user_profile_avatar(self):
+    def test_update_user_profile_avatar(self) -> None:
         """
         Test updating user profile's avatar.
         """
@@ -537,7 +546,7 @@ class TestsUserViewSet(TestCase):
         # Check if avatar URL is updated in the database
         self.assertTrue(User.objects.get(email=self.user.email).avatar, avatar)
 
-    def test_update_user_profile_email(self):
+    def test_update_user_profile_email(self) -> None:
         """
         Test updating user profile's email.
         """
@@ -552,7 +561,7 @@ class TestsUserViewSet(TestCase):
         # Check if email address is updated in response data
         self.assertEqual(response.data['email'], email)
 
-    def test_update_user_password_successfully(self):
+    def test_update_user_password_successfully(self) -> None:
         """
         Test updating user password successfully.
         """
@@ -567,7 +576,7 @@ class TestsUserViewSet(TestCase):
         # Check if password is updated in the database and matches the new password
         self.assertTrue(User.objects.get(email=self.user.email).check_password(password))
 
-    def test_update_user_password_with_invalid_passwords(self):
+    def test_update_user_password_with_invalid_passwords(self) -> None:
         """
         Test updating user password with invalid passwords.
         """
@@ -584,7 +593,7 @@ class TestsUserViewSet(TestCase):
             # Check if the error message matches the expected error for the corresponding invalid password
             self.assertRaisesMessage(response.data['password'][0], ERRORS_PASSWORDS[i])
 
-    def test_update_user_password_with_existing_passwords(self):
+    def test_update_user_password_with_existing_passwords(self) -> None:
         """
         Test updating user password with an existing password.
         """
@@ -597,7 +606,7 @@ class TestsUserViewSet(TestCase):
         # Check if response contains an error message indicating that the new password must be different
         self.assertRaisesMessage(response.data[0], 'New password must be different from the old password.')
 
-    def test_change_email_to_existing_email(self):
+    def test_change_email_to_existing_email(self) -> None:
         """
         Test attempting to change email to an existing email.
         """
@@ -608,7 +617,7 @@ class TestsUserViewSet(TestCase):
         # Check if response contains an error message related to the email field
         self.assertIn('email', response.data)
 
-    def test_update_others_user_profile(self):
+    def test_update_others_user_profile(self) -> None:
         """
         Test attempting to update another user's profile.
         """
@@ -617,7 +626,7 @@ class TestsUserViewSet(TestCase):
         # Check if response indicates forbidden action (status code 403)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-    def test_delete_other_user(self):
+    def test_delete_other_user(self) -> None:
         """
         Test attempting to delete another user.
         """
@@ -626,14 +635,32 @@ class TestsUserViewSet(TestCase):
         # Check if response indicates forbidden action (status code 403)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-    def test_update_user_groups(self):
+    def test_update_user_groups_negative(self) -> None:
         """
         Test updating user groups.
         """
-        # TODO: Implement this test (Provide a brief description of what this test aims to achieve)
-        response = self.client.patch(self.url, {'groups': [1, 2]}, format='json')
+        response = self.client.patch(self.url, {'groups': self.groups}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertRaisesMessage(response.data[0], 'Only admin users can update groups.')
 
-    def test_delete_own_user(self):
+        response = self.client.get(f'{USER_URL}/{self.user.id}')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['groups'], [])
+
+    def test_update_user_groups_positive(self) -> None:
+        """
+        Test updating user groups.
+        """
+        self.user.is_staff = True
+        self.user.save()
+        response = self.client.patch(self.url, {'groups': self.groups}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        response = self.client.get(f'{USER_URL}/{self.user.id}')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['groups'], self.groups)
+
+    def test_delete_own_user(self) -> None:
         """
         Test attempting to delete own user.
         """
@@ -660,7 +687,7 @@ class TestsOwnUserAPIView(TestCase):
         self.user = User.objects.create_user(email='test@example.com', password='Strongpassword!23',
                                              first_name='John', last_name='Doe')
 
-    def test_get_profile(self):
+    def test_get_profile(self) -> None:
         """
         Test to retrieve user profile.
         """
@@ -676,7 +703,7 @@ class TestsOwnUserAPIView(TestCase):
         self.assertEqual(response.data[0]['last_name'], self.user.last_name)
         self.assertEqual(response.data[0]['id'], self.user.id)
 
-    def test_get_profile_unauthenticated(self):
+    def test_get_profile_unauthenticated(self) -> None:
         """
         Test to retrieve user profile without authentication.
         """

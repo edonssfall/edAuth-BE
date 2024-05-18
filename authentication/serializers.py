@@ -1,11 +1,11 @@
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
+from rest_framework_simplejwt.tokens import RefreshToken, Token
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework.exceptions import AuthenticationFailed
 from authentication.utils import custom_validate_password
 from django.utils.encoding import smart_bytes, force_str
-from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
@@ -29,11 +29,11 @@ class RegisterSerializer(serializers.ModelSerializer):
             'last_name': {'required': True}
         }
 
-    def validate_password(self, attrs):
+    def validate_password(self, attrs: dict) -> dict:
         custom_validate_password(attrs)
         return attrs
 
-    def create(self, validated_data):
+    def create(self, validated_data: dict) -> User:
         validated_data.pop('repeat_password')
         user = User.objects.create(**validated_data)
 
@@ -56,11 +56,12 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = 'id', 'email', 'first_name', 'last_name', 'avatar', 'password', 'new_password', 'repeat_new_password', 'groups'
 
-    def update(self, instance, validated_data):
+    def update(self, instance: User, validated_data: dict) -> User:
         """
         Update the user's location if provided in the request data
         Password is updated separately
         """
+        groups = validated_data.pop('groups', None)
         new_password = validated_data.pop('new_password', None)
         repeat_new_password = validated_data.pop('repeat_new_password', None)
 
@@ -73,6 +74,12 @@ class UserSerializer(serializers.ModelSerializer):
             instance.set_password(new_password)
             instance.save()
 
+        # Ensure only admin can update the groups
+        if groups:
+            if not self.context['request'].user.is_staff:
+                raise serializers.ValidationError("Only admin users can update groups.")
+            instance.groups.set(groups)
+
         return super().update(instance, validated_data)
 
 
@@ -83,11 +90,11 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     """
 
     @classmethod
-    def get_token(cls, user):
+    def get_token(cls, user: User) -> Token:
         token = super().get_token(user)
         return token
 
-    def validate(self, attrs):
+    def validate(self, attrs: dict) -> dict:
         data = super().validate(attrs)
         data['user'] = UserSerializer(self.user).data
 
@@ -105,7 +112,7 @@ class PasswordResetRequestSerializer(serializers.Serializer):
     class Meta:
         fields = 'email', 'url'
 
-    def validate(self, attrs):
+    def validate(self, attrs: dict) -> dict:
         email = attrs.get('email')
         if User.objects.filter(email=email).exists():
             user = User.objects.get(email=email)
@@ -131,7 +138,7 @@ class PasswordSetNewSerializer(serializers.Serializer):
     class Meta:
         fields = 'password', 'confirm_password', 'uidb64', 'token'
 
-    def validate(self, attrs):
+    def validate(self, attrs: dict) -> dict:
         try:
             password = attrs.get('password')
             uidb64 = attrs.get('uidb64')
@@ -160,11 +167,11 @@ class LogoutSerializer(serializers.Serializer):
     refresh_token = serializers.CharField()
     default_error_messages = {'bad_token': 'Token is invalid or has expired'}
 
-    def validate(self, attrs):
+    def validate(self, attrs: dict) -> dict:
         self.refresh_token = attrs.get('refresh_token')
         return attrs
 
-    def save(self, **kwargs):
+    def save(self, **kwargs) -> None:
         try:
             token = RefreshToken(self.refresh_token)
             token.blacklist()
