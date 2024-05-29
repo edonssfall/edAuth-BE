@@ -20,7 +20,7 @@ class RegisterUserAPIView(mixins.CreateModelMixin, GenericViewSet):
     queryset = User.objects.all()
     serializer_class = RegisterSerializer
 
-    def post(self, request, *args, **kwargs):
+    def post(self, request, *args, **kwargs) -> Response:
         """
         Create method and return error or user
         """
@@ -46,7 +46,7 @@ class PasswordResetRequestAPIView(GenericAPIView):
     """
     serializer_class = PasswordResetRequestSerializer
 
-    def post(self, request, *args, **kwargs):
+    def post(self, request, *args, **kwargs) -> Response:
         """
         Send email, and message to frontend with link
         """
@@ -62,7 +62,7 @@ class PasswordSetNewAPIView(GenericAPIView):
     """
     serializer_class = PasswordSetNewSerializer
 
-    def patch(self, request):
+    def patch(self, request) -> Response:
         """
         Set new password
         """
@@ -78,7 +78,7 @@ class LogoutUserAPIView(GenericAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = LogoutSerializer
 
-    def post(self, request):
+    def post(self, request) -> Response:
         """
         This method save refresh token t drf. Black list
         """
@@ -95,7 +95,7 @@ class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
 
-    def get_permissions(self):
+    def get_permissions(self) -> list:
         """
         This method is used to set the permissions for the view.
         """
@@ -106,3 +106,21 @@ class UserViewSet(viewsets.ModelViewSet):
             permission_classes.append(permissions.IsObjectOwner())
 
         return permission_classes
+
+
+class OwnUserAPIView(GenericAPIView):
+    """
+    Own user api view
+    """
+    permission_classes = [IsAuthenticated]
+    serializer_class = UserSerializer
+
+    def get(self, request) -> Response:
+        """
+        Get user
+        """
+        user = request.user
+        response = user.tokens()
+        serializer = self.serializer_class(user)
+        response['user'] = serializer.data
+        return Response(response, status=status.HTTP_200_OK)

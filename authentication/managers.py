@@ -9,14 +9,15 @@ class CustomUserManager(BaseUserManager):
     Custom user model manager where email is the unique identifiers
     for authentication instead of usernames.
     """
+
     @staticmethod
-    def email_validator(email):
+    def email_validator(email: str) -> None:
         try:
             validate_email(email)
         except ValidationError:
             raise ValidationError(_('please enter valid email address'))
 
-    def create_user(self, email, password, **extra_fields):
+    def create_user(self, email: str, password: str, **extra_fields) -> None:
         """
         Create and save a User with the given email and password.
         """
@@ -31,7 +32,7 @@ class CustomUserManager(BaseUserManager):
         user.save()
         return user
 
-    def create_superuser(self, email, password, **extra_fields):
+    def create_superuser(self, email: str, password: str, **extra_fields) -> None:
         """
         Create and save a SuperUser with the given email and password.
         """

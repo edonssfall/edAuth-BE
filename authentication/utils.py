@@ -1,20 +1,23 @@
-from django.contrib.auth import get_user_model
-from django.core.mail import EmailMessage
-from config import settings
-
-User = get_user_model()
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
+from rest_framework import serializers
 
 
-def send_email(subject: str, body: str, to: list, fail_silently=False):
-    """
-    This function is used to send an email.
-    params: subject, body, to, fail_silently
-    return: None
-    """
-    email = EmailMessage(
-        subject=subject,
-        body=body,
-        from_email=settings.EMAIL_HOST_USER,
-        to=to
-    )
-    email.send(fail_silently=fail_silently)
+def custom_validate_password(password) -> None:
+    try:
+        validate_password(password)
+    except ValidationError as e:
+        raise serializers.ValidationError({'password': e.messages})
+
+    if len(password) < 8:
+        raise serializers.ValidationError({'password': 'Password must be at least 8 characters long.'})
+
+    if not any(char.isdigit() for char in password):
+        raise serializers.ValidationError({'password': 'Password must contain at least one digit.'})
+
+    special_characters = "!@#$%^&*()-_=+[{]}\|;:'\',<.>/?"
+    if not any(char in special_characters for char in password):
+        raise serializers.ValidationError({'password': 'Password must contain at least one special character.'})
+
+    if not any(char.isupper() for char in password):
+        raise serializers.ValidationError({'password': 'Password must contain at least one uppercase letter.'})
